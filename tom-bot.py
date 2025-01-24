@@ -1,18 +1,18 @@
 import os
 import yt_dlp
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
 # التوكن الخاص بك
-# TOKEN = '8101740282:AAGwoOxziGcRmOIyH4PzFx1pve-Pp8DIrp0'
-TOKEN = os.getenv('TOKEN')
+TOKEN = "8101740282:AAGwoOxziGcRmOIyH4PzFx1pve-Pp8DIrp0"
+
 # دالة لإرسال رسالة ترحيب
-def start(update: Update, context: CallbackContext):
-    update.message.reply_text("مرحبًا! أنا هنا لمساعدتك في تنزيل فيديوهات YouTube.\n"
-                              "يرجى إرسال رابط الفيديو الذي تريد تنزيله.")
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("مرحبًا! أنا هنا لمساعدتك في تنزيل فيديوهات YouTube.\n"
+                                    "يرجى إرسال رابط الفيديو الذي تريد تنزيله.")
 
 # دالة لتنزيل الفيديو عند استلام الرابط
-def download_video(update: Update, context: CallbackContext):
+async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     video_url = update.message.text  # الحصول على الرابط المرسل من المستخدم
 
     # مجلد التنزيل
@@ -28,7 +28,7 @@ def download_video(update: Update, context: CallbackContext):
 
     try:
         # إعلام المستخدم بأن التنزيل بدأ
-        update.message.reply_text("جاري تنزيل الفيديو...")
+        await update.message.reply_text("جاري تنزيل الفيديو...")
 
         # تنزيل الفيديو
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -38,34 +38,36 @@ def download_video(update: Update, context: CallbackContext):
         # التحقق من حجم الفيديو
         file_size = os.path.getsize(output_file) / (1024 * 1024)  # الحجم بالميجابايت
         if file_size > 50:
-            update.message.reply_text("عذرًا، حجم الفيديو أكبر من 50MB ولا يمكن إرساله عبر Telegram.")
+            await update.message.reply_text("عذرًا، حجم الفيديو أكبر من 50MB ولا يمكن إرساله عبر Telegram.")
             os.remove(output_file)  # حذف الفيديو إذا كان كبيرًا
             return
 
         # إرسال الفيديو إلى المستخدم
         with open(output_file, 'rb') as video_file:
-            update.message.reply_video(video=video_file, caption=f'تم تنزيل الفيديو: {video_title}')
+            await update.message.reply_video(video=video_file, caption=f'تم تنزيل الفيديو: {video_title}')
 
         # حذف الفيديو بعد الإرسال
         os.remove(output_file)
 
     except Exception as e:
-        update.message.reply_text(f'حدث خطأ أثناء تنزيل الفيديو: {str(e)}')
+        await update.message.reply_text(f'حدث خطأ أثناء تنزيل الفيديو: {str(e)}')
         if os.path.exists(output_file):
             os.remove(output_file)  # حذف الفيديو في حالة حدوث خطأ
 
+# الوظيفة الرئيسية
 def main():
-    updater = Updater(TOKEN)
+    # إنشاء التطبيق
+    app = Application.builder().token(TOKEN).build()
 
-    dispatcher = updater.dispatcher
-    dispatcher.add_handler(CommandHandler("start", start))  # معالج للأمر /start
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, download_video))  # معالجة الرسائل النصية
+    # إضافة المعالجات
+    app.add_handler(CommandHandler("start", start))  # معالج للأمر /start
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, download_video))  # معالجة الرسائل النصية
 
     # طباعة رسالة عند بدء البوت
     print("البوت يعمل الآن!")
 
-    updater.start_polling()
-    updater.idle()
+    # تشغيل البوت
+    app.run_polling()
 
 if __name__ == '__main__':
     main()
