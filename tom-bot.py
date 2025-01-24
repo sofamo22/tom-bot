@@ -1,11 +1,12 @@
 import os
 import yt_dlp
-from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
+from telegram import Update, Bot
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
 # التوكن الخاص بك
-# TOKEN = '8101740282:AAGwoOxziGcRmOIyH4PzFx1pve-Pp8DIrp0'
 TOKEN = '8101740282:AAGwoOxziGcRmOIyH4PzFx1pve-Pp8DIrp0'
+WEBHOOK_URL = "https://tom-bot-finr.vercel.app/api/bot"
+
 # دالة لإرسال رسالة ترحيب
 def start(update: Update, context: CallbackContext):
     update.message.reply_text("مرحبًا! أنا هنا لمساعدتك في تنزيل فيديوهات YouTube.\n"
@@ -54,16 +55,25 @@ def download_video(update: Update, context: CallbackContext):
         if os.path.exists(output_file):
             os.remove(output_file)  # حذف الفيديو في حالة حدوث خطأ
 
+def set_webhook():
+    bot = Bot(TOKEN)
+    bot.set_webhook(url=WEBHOOK_URL)  # Set the webhook URL for your Telegram bot
+
 def main():
+    # Set webhook on Telegram server
+    set_webhook()
+
+    # Start the Updater and Dispatcher to listen for incoming messages
     updater = Updater(TOKEN)
-
     dispatcher = updater.dispatcher
-    dispatcher.add_handler(CommandHandler("start", start))  # معالج للأمر /start
-    dispatcher.add_handler(MessageHandler(filters.text & ~filters.command, download_video))  # معالجة الرسائل النصية
 
-    # طباعة رسالة عند بدء البوت
-    print("البوت يعمل الآن!")
+    # Add command handler for /start
+    dispatcher.add_handler(CommandHandler("start", start))
 
+    # Add message handler for receiving video download requests
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, download_video))
+
+    # Start polling (This will listen for incoming messages)
     updater.start_polling()
     updater.idle()
 
